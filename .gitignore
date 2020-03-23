@@ -1,0 +1,15 @@
+# Specify filepatterns you want git to ignore.
+
+# custom things to ignore
+
+# Folders to ignore
+bower_components
+node_modules
+build
+src/components/
+src/themes/
+src/scss/framway.scss
+vendor/index.js
+
+# dev files
+sftp-config.json
