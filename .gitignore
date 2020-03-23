@@ -1,6 +1,8 @@
 # Specify filepatterns you want git to ignore.
 
 # custom things to ignore
+assets/framway/*
+!assets/framway/framway.config.js
 
 # Folders to ignore
 bower_components
