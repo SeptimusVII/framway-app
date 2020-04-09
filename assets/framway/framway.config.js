@@ -1,10 +1,11 @@
 module.exports = {
   themes:[
-    // 'themeName',
+    'framwayapp',
   ],
   components:[
     'tabs',
     'block-std',
+    'btn-load',
     // 'test',
     // 'dashboard',
     // 'guidelines',
