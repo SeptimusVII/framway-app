@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Framway - app</title>
+		<link href="/framway/build/css/vendor.css" type="text/css" rel="stylesheet">
+		<link href="/framway/build/css/framway.css" type="text/css" rel="stylesheet">
+		<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=0">
+	</head>
+	<body>
+		<div class="p-all-x2 container">
+			<div class="flex-justifycontent--spacebetween-alignitems--center-wrap m-bottom">
+				<h1 id="app__title">
+					<div id="app__status"></div>
+					FRAMWAY<span class="ft-grey">/</span>
+					<span id="app__version" class="status--install">Loading...</span>
+				</h1>
+				<div id="app__actions">
+					<!-- <form action="/app/action" method="post"> -->
+						<a href="/app/install" data-action="install" data-result="false" data-process="processAction" class="btn-load disabled">Install</a>
+						<button name="action" data-action="build" data-result="false" data-process="processAction" class="btn-load disabled">Build</button>
+						<button name="action" data-action="reset" data-result="false" data-process="processAction" class="btn-load btn-bd-orange disabled">Reset</button>
+					<!-- </form> -->
+				</div>
+			</div>
+			<form id="app_config" class="d-grid cols-3 cols-md-2 cols-sm-1 ">
+				<div class="block-std">
+					<h2>COMPONENTS</h2>
+			    	<ul class="app__list sortable" id="app__list--components"></ul>
+			    	<p>No component found.</p>
+				</div>
+				<div class="block-std">
+					<h2>THEMES</h2>
+		    		<ul class="app__list sortable" id="app__list--themes"></ul>
+		    		<p>No theme found.</p>
+				</div>
+				<div class="block-std">
+					<h2>OTHERS</h2>
+		    		<ul class="app__list" id="app__list--others">
+		    			<li>
+		    				<label for="f_config_useFA">Font Awesome</label>
+		    				<select name="f_config_useFA" id="f_config_useFA">
+		    					<option value="false">No</option>
+		    					<option value="free">Free</option>
+		    					<option value="pro">Pro</option>
+		    				</select>
+		    			</li>
+						<li>
+							<input type="checkbox" name="f_config_useToastr" id="f_config_useToastr">
+							<label for="f_config_useToastr">Use Toastr</label>
+						</li>
+						<li>
+							<input type="checkbox" name="f_config_debug" id="f_config_debug">
+							<label for="f_config_debug">Debug mode</label>
+						</li>
+						<li></li>
+		    		</ul>
+		    		<p>No configuration found.</p>
+				</div>
+			</form>
+			<div id="app__message" class="w-100"></div>
+		</div>
+		<script type="text/javascript" src="/framway/build/js/vendor.js"></script>
+		<script type="text/javascript" src="/framway/build/js/framway.js"></script>
+		
+		<script type="text/javascript" src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/@shopify/draggable@1.0.0-beta.8/lib/sortable.js"></script>
+
+		<script src="/socket.io/socket.io.js"></script>
+		<script>
+			var CONFIG = {};
+        	var socket = io.connect('localhost:666', {transports: ['websocket']});      
+        	
+        	// set sortable lists
+        	for(var list of document.querySelectorAll('.app__list.sortable')){
+	        	var sortable = new Sortable.default(list, {
+				    draggable: 'li',
+				    mirror: {
+				      appendTo: list,
+				      constrainDimensions: true,
+				      xAxis: false,
+				    },
+				});
+				sortable.on('sortable:stop',function(){
+					setTimeout(function(){
+	        			checkConfig();
+					},10)
+				})
+        	}
+        	// set custom event listening for inputs from interface, checking config correspondance
+        	app.addCustomEventListener('.app__list [name]','change',function(){
+	        	checkConfig();
+        	});
+
+        	/**
+        	 * update app status and emit action to the server, according the button used
+        	 * @param  {BtnLoad object} btn
+        	 */
+        	var processAction = function(btn){
+        		return new Promise(function(resolve,reject){
+        			processAction.reject = reject;
+        			processAction.resolve = resolve;
+        			var action = btn.getData('action',false);
+        			var strAction;
+        			switch(action){
+        				case 'install': strAction = 'installing Framway...'; break;
+        				case 'build'  : strAction = 'building Framway...'; break;
+        				case 'reset'  : strAction = 'deleting Framway...'; break;
+        				default       : strAction = 'action "'+action+'" non reconnue'; break;
+        			}
+        			document.getElementById('app__version').innerHTML = strAction;
+        			document.getElementById('app__status').className = 
+        			document.getElementById('app__version').className = 'status--'+action;
+
+	        		socket.emit('action',action,getCurrentConfig());
+        		});
+        	}
+
+        	/**
+        	 * check correspondance between original config and the one currently displayed and update app message 
+        	 * @return {boolean} true if current config is same as the original
+        	 */
+        	var checkConfig = function(){
+        		var isSame = (JSON.stringify(getCurrentConfig()) !== JSON.stringify(CONFIG));
+        		document.querySelector('#app__message').innerHTML = '';
+        		if (!isSame)
+        			document.querySelector('#app__message').innerHTML = 'Current configuration has changed. Use the <u>Build</u> action to save it.';
+        		return isSame;
+        	}
+
+        	/**
+        	 * retrieve and return current config according to interface's inputs
+        	 * @return {object} 
+        	 */
+        	var getCurrentConfig = function(){
+        		var config = {
+        			components: [],
+        			themes: [],
+        			useFA: document.getElementById('f_config_useFA').value != "false"?document.getElementById('f_config_useFA').value:false,
+        			useToastr: document.getElementById('f_config_useToastr').checked,
+        			debug: document.getElementById('f_config_debug').checked,
+        		};
+        		for(var component of document.querySelectorAll('#app__list--components input'))
+        			if(component.checked)
+        				config.components.push(component.value)
+        		for(var theme of document.querySelectorAll('#app__list--themes input'))
+        			if(theme.checked)
+        				config.themes.push(theme.value)
+        		return config;
+        	}
+
+        	/**
+        	 * listen to events emmited by server
+        	 */
+        	socket
+        	.on('connected',function(){ console.log('### Websocket connected'); })
+        	.on('check',function(){ console.log('### checking..'); })
+        	.on('reload',function(){ console.log('### reloading'); window.location.reload(); })
+        	.on('update',function(data){
+        		console.log('### updating interface');
+        		console.log(data);
+
+        		// HEADER 
+        		document.getElementById('app__status').className = 
+        		document.getElementById('app__version').className = 'status--'+data.status;
+        		switch(data.status){
+        			case 'ok': 
+        				document.getElementById('app__version').innerHTML = data.framway.version;
+        				document.querySelector('#app__actions .btn-load[data-action=install]').classList.add('disabled');
+        				document.querySelector('#app__actions .btn-load[data-action=build]').classList.remove('disabled');
+        				document.querySelector('#app__actions .btn-load[data-action=reset]').classList.remove('disabled');
+        			break;
+        			case 'build': 
+        				document.getElementById('app__version').innerHTML = 'not builded';
+        				document.querySelector('#app__actions .btn-load[data-action=install]').classList.add('disabled');
+        				document.querySelector('#app__actions .btn-load[data-action=build]').classList.remove('disabled');
+        				document.querySelector('#app__actions .btn-load[data-action=reset]').classList.remove('disabled');
+        			break;
+        			case 'install': 
+        				document.getElementById('app__version').innerHTML = 'not installed';
+        				document.querySelector('#app__actions .btn-load[data-action=install]').classList.remove('disabled');
+        				document.querySelector('#app__actions .btn-load[data-action=build]').classList.add('disabled');
+        				document.querySelector('#app__actions .btn-load[data-action=reset]').classList.add('disabled');
+        			break;
+        		}
+
+        		// REMOTE LISTS
+        		document.getElementById('app__list--components').innerHTML = '';
+        		for(var component of data.remote.components){
+        			document.getElementById('app__list--components').innerHTML += `
+        				<li>
+        					<input type="checkbox" name="f_components_${component.name_short}" id="f_components_${component.name_short}" value="${component.name_short}" />
+        					<label for="f_components_${component.name_short}">${component.name_short}</label>
+        				</li>
+        			`;
+        		}
+        		document.getElementById('app__list--themes').innerHTML = '';
+        		for(var theme of data.remote.themes){
+        			document.getElementById('app__list--themes').innerHTML += `
+        				<li>
+        					<input type="checkbox" name="f_themes_${theme.name_short}" id="f_themes_${theme.name_short}" value="${theme.name_short}" />
+        					<label for="f_themes_${theme.name_short}">${theme.name_short}</label>
+        				</li>
+        			`;
+        		}
+
+        		// DISPLAY FRAMWAY ACTUAL CONFIG
+        		if(data.status == 'ok'){
+	        		document.getElementById('f_config_useFA').value = data.framway.useFA;
+	        		if (data.framway.useToastr) document.getElementById('f_config_useToastr').checked = true;
+	        		else document.getElementById('f_config_useToastr').checked = false;
+	        		if (data.framway.debug) document.getElementById('f_config_debug').checked = true;
+	        		else document.getElementById('f_config_debug').checked = false;
+
+		        	for(var component of data.framway.components)
+		        		document.querySelector('#f_components_'+component).checked = true;
+		        	for(var theme of data.framway.themes)
+		        		document.querySelector('#f_themes_'+theme).checked = true;
+
+	        		CONFIG = {
+	        			components: data.framway.components,
+	        			themes: data.framway.themes,
+	        			useFA: data.framway.useFA,
+	        			useToastr: data.framway.useToastr,
+	        			debug: data.framway.debug,
+	        		};
+        		}
+
+        		// confirm ended action
+        		if (typeof processAction.resolve != 'undefined')
+        			processAction.resolve();
+        		
+        	})
+		</script>
+	</body>
+</html>
