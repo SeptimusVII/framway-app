@@ -6,7 +6,6 @@ module.exports = {
     'tabs',
     'block-std',
     'btn-load',
-    // 'test',
     // 'dashboard',
     // 'guidelines',
     // 'documentation',
