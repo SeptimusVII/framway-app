@@ -7,7 +7,7 @@ assets/framway/*
 # Folders to ignore
 bower_components
 node_modules
-src
+src/framway
 vendor/index.js
 
 # dev files
